@@ -3,7 +3,12 @@ pandas==2.2.1
 numpy==1.26.4
 jupyter==1.0.0
 ipykernel==6.29.3
+delta-spark==3.1.0
 # pyarrow==15.0.0
 # fastparquet==2024.2.0
 # openpyxl==3.1.2
 kagglehub
+fastapi
+uvicorn
+pandas
+pyarrow
