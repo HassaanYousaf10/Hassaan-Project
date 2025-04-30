@@ -1,169 +1,143 @@
 digraph DataArchitecture {
-    rankdir=TB; // Top to Bottom flow
-    node [shape=box, style=filled, fillcolor="#f9f9f9", fontname="Arial", fontsize=10];
+    // Global layout and style
+    graph [
+        fontname="Helvetica", fontsize=14,
+        rankdir=TB,
+        nodesep=1.0,
+        ranksep=1.8,
+        splines=true,
+        overlap=false,
+        margin=0.4,
+        label="\n\nData Platform Architecture",
+        labelloc=top,
+        fontsize=24
+    ];
+
+    node [
+        shape=box, style="rounded,filled", fillcolor="#f9f9f9",
+        fontname="Helvetica-Bold", fontsize=14,
+        width=3.2, height=0.8,
+        penwidth=1.2
+    ];
 
     // Source Systems
     subgraph cluster_sources {
-        label = "Source Systems";
-        style=filled;
-        fillcolor="#e3f2fd";
-
-        operational_db [label="Operational DB\n(SQL Server / Azure SQL DB)"];
-        iot_devices [label="IoT Devices\n(Azure IoT Hub / MQTT)"];
-        mobile_app [label="Mobile App\n(Azure App Service / Mobile Apps)"];
-        crm_system [label="CRM System\n(Dynamic s 365 / Salesforce)"];
+        label="Source Systems"; style="rounded,filled"; fillcolor="#e3f2fd";
+        margin=15;
         ticketing_system [label="Ticketing System\n(ServiceNow / Zendesk)"];
-    }
-
-    // Data Governance Layer
-    subgraph cluster_governance {
-        label = "Data Governance Layer";
-        style=filled;
-        fillcolor="#e0f7fa";
-
-        data_quality [label="Data Quality\n(Azure Purview / Great Expectations)"];
-        lineage_tracking [label="Lineage\n(Azure Purview / OpenLineage)"];
-        metadata_mgmt [label="Metadata\n(Azure Purview / DataHub)"];
-        sensitive_data [label="Sensitive Data\n(Azure Purview / Privacera)"];
-        monitoring_alerts [label="Monitoring &\n(Azure Monitor / Grafana)"];
+        crm_system       [label="CRM System\n(Dynamics 365 / Salesforce)"];
+        operational_db   [label="Operational DB\n(SQL Server / Azure SQL DB)"];
+        mobile_app       [label="Mobile App\n(Azure App Service / Mobile Apps)"];
+        iot_devices      [label="IoT Devices\n(Azure IoT Hub / MQTT)"];
     }
 
     // Ingestion Layer
     subgraph cluster_ingestion {
-        label = "Ingestion Layer";
-        style=filled;
-        fillcolor="#e8f5e9";
-
-        adf [label="Azure Data Factory\n(Batch Ingestion / CDC)"];
-        eventhub [label="Azure Event Hub\n(Stream Ingestion / Kafka)"];
+        label="Ingestion Layer"; style="rounded,filled"; fillcolor="#e8f5e9";
+        margin=15;
+        adf        [label="Azure Data Factory\n(Batch Ingestion / CDC)"];
+        eventhub   [label="Azure Event Hub\n(Stream Ingestion / Kafka)"];
         autoloader [label="Databricks Autoloader\n(Auto Ingest Files)"];
     }
 
-    // Bronze Layer (Raw Data)
+    // Bronze Layer (Raw)
     subgraph cluster_bronze {
-        label = "Bronze Layer (Raw)";
-        style=filled;
-        fillcolor="#fce4ec";
-
-        bronze_operational [label="Bronze - Operational Raw\n(Azure Data Lake Gen2)"];
-        bronze_iot [label="Bronze - IoT Raw\n(Azure Data Lake Gen2)"];
-        bronze_mobile [label="Bronze - Mobile Raw\n(Azure Data Lake Gen2)"];
-        bronze_crm [label="Bronze - CRM Raw\n(Azure Data Lake Gen2)"];
-        bronze_ticketing [label="Bronze - Ticketing Raw\n(Azure Data Lake Gen2)"];
-    }
-
-    // Silver Layer (Cleaned Data)
-    subgraph cluster_silver {
-        label = "Silver Layer (Cleansed)";
-        style=filled;
-        fillcolor="#fff3e0";
-
-        silver_workorders [label="Silver - Work Orders\n(Databricks Delta Lake)"];
-        silver_equipment [label="Silver - Equipment Telemetry\n(Databricks Delta Lake)"];
-        silver_service_notes [label="Silver - Service Notes\n(Databricks Delta Lake)"];
-        silver_customer_profiles [label="Silver - Customer Profiles\n(Databricks Delta Lake)"];
-        silver_support_cases [label="Silver - Support Cases\n(Databricks Delta Lake)"];
-    }
-
-    // Gold Layer (Business Ready / Feature Ready)
-    subgraph cluster_gold {
-        label = "Gold Layer (Feature Ready)";
-        style=filled;
-        fillcolor="#ede7f6";
-
-        gold_churn_features [label="Gold - Customer Churn Features\n(Databricks Feature Store)"];
-        gold_maintenance_features [label="Gold - Predictive Maintenance Features\n(Databricks Feature Store)"];
-        gold_technician_routing [label="Gold - Technician Routing Features\n(Databricks Feature Store)"];
-        gold_cv_training_data [label="Gold - Computer Vision Images Metadata\n(Databricks Feature Store)"];
-    }
-
-    // ML/AI Serving
-    subgraph cluster_ml {
-        label = "ML/AI Serving";
-        style=filled;
-        fillcolor="#f1f8e9";
-
-        feature_store [label="Databricks Feature Store\n(MLflow / Feast)"];
-        model_training [label="Model Training Pipelines\n(Databricks ML / Azure ML)"];
-        llm_assistant [label="LLM Assistant Serving Layer\n(Azure OpenAI / Databricks LLM)"];
+        label="Bronze Layer (Raw)"; style="rounded,filled"; fillcolor="#fce4ec";
+        margin=15;
+        bronze_operational [label="Operational Raw\n(Azure Data Lake Gen2)"];
+        bronze_crm         [label="CRM Raw\n(Azure Data Lake Gen2)"];
+        bronze_ticketing   [label="Ticketing Raw\n(Azure Data Lake Gen2)"];
+        bronze_iot         [label="IoT Raw\n(Azure Data Lake Gen2)"];
+        bronze_mobile      [label="Mobile Raw\n(Azure Data Lake Gen2)"];
     }
 
     // Transformations Layer
     subgraph cluster_transformations {
-        label = "Transformations Layer";
-        style=filled;
-        fillcolor="#f3e5f5";
-
-        dbt_core [label="dbt Core\n(Data Transformations)"];
-        databricks_sql [label="Databricks SQL\n(Advanced Analytics)"];
-        spark_jobs [label="Spark Jobs\n(ETL Processing)"];
+        label="Transformations Layer"; style="rounded,filled"; fillcolor="#f3e5f5";
+        margin=15;
+        spark_jobs [label="Spark Jobs\n(Heavy ETL – PySpark)"];
+        dbt_core   [label="dbt Core\n(Light Transformations)"];
     }
 
-    // Connections
+    // Silver Layer (Cleansed)
+    subgraph cluster_silver {
+        label="Silver Layer (Cleansed)"; style="rounded,filled"; fillcolor="#fff3e0";
+        margin=15;
+        silver_workorders       [label="Work Orders\n(Databricks Delta Lake)"];
+        silver_equipment        [label="Equipment Telemetry\n(Databricks Delta Lake)"];
+        silver_service_notes    [label="Service Notes\n(Databricks Delta Lake)"];
+        silver_customer_profiles[label="Customer Profiles\n(Databricks Delta Lake)"];
+        silver_support_cases    [label="Support Cases\n(Databricks Delta Lake)"];
+    }
 
-    // Data Governance Connections
-    data_quality -> bronze_operational [style=dashed];
-    data_quality -> bronze_iot [style=dashed];
-    data_quality -> bronze_mobile [style=dashed];
-    data_quality -> bronze_crm [style=dashed];
-    data_quality -> bronze_ticketing [style=dashed];
+    // Gold Layer
+    subgraph cluster_gold {
+        label="Gold Layer (Feature Ready)"; style="rounded,filled"; fillcolor="#ede7f6";
+        margin=15;
+        gold_churn_features       [label="Customer Churn Features\n(Databricks Feature Store)"];
+        gold_maintenance_features [label="Predictive Maintenance Features\n(Databricks Feature Store)"];
+        gold_technician_routing   [label="Technician Routing Features\n(Databricks Feature Store)"];
+        gold_cv_training_data     [label="Computer Vision Images Metadata\n(Databricks Feature Store)"];
+    }
 
-    lineage_tracking -> bronze_operational [style=dashed];
-    lineage_tracking -> silver_workorders [style=dashed];
-    lineage_tracking -> gold_churn_features [style=dashed];
+    // ML/AI
+    subgraph cluster_ml {
+        label="ML/AI Serving"; style="rounded,filled"; fillcolor="#f1f8e9";
+        margin=15;
+        feature_store   [label="Databricks Feature Store\n(MLflow / Feast)"];
+        model_training  [label="Model Training Pipelines\n(Databricks ML / Azure ML)"];
+        llm_assistant   [label="LLM Assistant Serving Layer\n(Azure OpenAI / Databricks LLM)"];
+    }
 
-    metadata_mgmt -> bronze_operational [style=dashed];
-    metadata_mgmt -> silver_workorders [style=dashed];
-    metadata_mgmt -> gold_churn_features [style=dashed];
+    // Governance Layer
+    subgraph cluster_governance {
+        label="Data Governance Layer"; style="rounded,filled"; fillcolor="#e0f7fa";
+        margin=15;
+        data_quality      [label="Data Quality\n(Azure Purview)"];
+        lineage_tracking  [label="Lineage\n(Azure Purview)"];
+        metadata_mgmt     [label="Metadata\n(Azure Purview)"];
+        sensitive_data    [label="Sensitive Data\n(Azure Purview)"];
+        monitoring_alerts [label="Monitoring & Alerts\n(Azure Monitor)"];
+    }
 
-    sensitive_data -> silver_customer_profiles [style=dashed];
-    sensitive_data -> gold_churn_features [style=dashed];
-
-    monitoring_alerts -> feature_store [style=dashed];
-    monitoring_alerts -> model_training [style=dashed];
-    monitoring_alerts -> llm_assistant [style=dashed];
-
-    // Sources to Ingestion
-    operational_db -> adf;
-    iot_devices -> eventhub;
-    mobile_app -> autoloader;
-    crm_system -> adf;
+    // Flows: Sources → Ingestion
     ticketing_system -> adf;
+    crm_system       -> adf;
+    operational_db   -> adf;
+    iot_devices      -> eventhub;
+    mobile_app       -> autoloader;
 
-    // Ingestion to Bronze
-    adf -> bronze_operational;
-    adf -> bronze_crm;
-    adf -> bronze_ticketing;
-    eventhub -> bronze_iot;
+    // Ingestion → Bronze
+    adf        -> {bronze_operational bronze_crm bronze_ticketing};
+    eventhub   -> bronze_iot;
     autoloader -> bronze_mobile;
 
-    // Bronze to Silver (via Transformations)
-    bronze_operational -> dbt_core;
-    bronze_iot -> dbt_core;
-    bronze_mobile -> dbt_core;
-    bronze_crm -> dbt_core;
-    bronze_ticketing -> dbt_core;
+    // Bronze → Transformations
+    {bronze_iot bronze_mobile} -> spark_jobs;
+    {bronze_operational bronze_crm bronze_ticketing} -> dbt_core;
 
-    dbt_core -> silver_workorders;
-    dbt_core -> silver_equipment;
-    dbt_core -> silver_service_notes;
-    dbt_core -> silver_customer_profiles;
-    dbt_core -> silver_support_cases;
+    // Transformations → Silver
+    spark_jobs -> {silver_equipment silver_service_notes};
+    dbt_core   -> {silver_workorders silver_customer_profiles silver_support_cases};
 
-    // Silver to Gold
-    silver_workorders -> gold_maintenance_features;
-    silver_equipment -> gold_maintenance_features;
-    silver_service_notes -> gold_technician_routing;
-    silver_customer_profiles -> gold_churn_features;
-    silver_support_cases -> gold_churn_features;
-    silver_service_notes -> gold_cv_training_data;
+    // Silver → Gold
+    silver_workorders       -> gold_maintenance_features;
+    silver_equipment        -> gold_maintenance_features;
+    silver_service_notes    -> gold_technician_routing;
+    silver_customer_profiles-> gold_churn_features;
+    silver_support_cases    -> gold_churn_features;
+    silver_service_notes    -> gold_cv_training_data;
 
-    // Gold to ML/AI
-    gold_churn_features -> feature_store;
-    gold_maintenance_features -> feature_store;
-    gold_technician_routing -> feature_store;
+    // Gold → ML/AI
+    {gold_churn_features gold_maintenance_features gold_technician_routing} -> feature_store;
     gold_cv_training_data -> model_training;
-    
-    feature_store -> model_training;
-    model_training -> llm_assistant;
+    feature_store         -> model_training;
+    model_training        -> llm_assistant;
+
+    // Governance overlays
+    data_quality      -> {bronze_operational bronze_crm bronze_ticketing bronze_iot bronze_mobile} [style=dashed];
+    lineage_tracking  -> {bronze_operational silver_workorders gold_churn_features} [style=dashed];
+    metadata_mgmt     -> {bronze_operational silver_workorders gold_churn_features} [style=dashed];
+    sensitive_data    -> {silver_customer_profiles gold_churn_features} [style=dashed];
+    monitoring_alerts -> {feature_store model_training llm_assistant} [style=dashed];
 }
