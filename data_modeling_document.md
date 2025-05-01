@@ -1,366 +1,182 @@
-# Data Modeling Document for Lakehouse Architecture
+# SmartField Inc. - Modern Data Lakehouse Architecture (Azure + Databricks)
 
-## 1. Silver Layer Data Models
+This document explains how the provided architecture diagram fulfills the project deliverables for SmartField Inc., which aims to build a robust, ML-ready, governed data platform using Azure services and Databricks.
 
-### 1.1 Work Orders (silver_workorders)
-**Business Context:**
-The Work Orders model serves as the central operational data model for service management. It tracks all service requests, maintenance activities, and field operations. This model is crucial for operational efficiency, service quality tracking, and resource allocation.
+---
 
-**Data Sources and Integration:**
-- Operational databases (service management systems)
-- Ticketing systems
-- Technician assignment systems
-- Equipment maintenance records
+## 1. Architecture Diagram
 
-**Key Transformations:**
-1. **Data Standardization**
-   - Normalize service type codes
-   - Standardize priority levels
-   - Convert timestamps to UTC
-   - Map status codes to business states
+### Modern Lakehouse Design on Cloud
+The architecture is built on **Microsoft Azure** and **Databricks** as the core compute & lakehouse engine. It integrates structured, semi-structured, and unstructured data from various systems and pushes it through a well-defined layered storage (medallion) model. 
 
-2. **Data Enrichment**
-   - Add SLA thresholds based on service type
-   - Calculate estimated vs actual duration
-   - Derive service complexity scores
-   - Add geographic information
+The overall components used include:
 
-3. **Data Quality**
-   - Validate required fields
-   - Check date consistency
-   - Verify technician assignments
-   - Validate equipment references
+- Azure Data Factory (batch ingestion)
+- Azure Event Hub (stream ingestion)
+- Databricks AutoLoader (file-based streaming)
+- Delta Lake (for all Bronze/Silver/Gold layers)
+- Azure ML, Unity Catalog, Azure Purview, Azure Blob Storage, and MLflow for governance and AI workflows
 
-**Business Relationships:**
-- Links to Customer Profiles (1:1)
-- Links to Equipment (1:1)
-- Links to Technicians (1:1)
-- Links to Service History (1:Many)
+### Data Flow: From Source to Consumption
 
-**Business Purpose:**
-- Track service request lifecycle
-- Monitor service level agreements (SLAs)
-- Optimize technician scheduling
-- Measure service quality metrics
-- Support billing and cost tracking
+Here’s how data moves:
 
-**Key Business Metrics:**
-- Service completion time
-- First-time fix rate
-- Technician utilization
-- Customer satisfaction scores
-- Service cost analysis
+- **Source Systems**:
+    - SQL Server on Azure VM (Operational DB)
+    - Azure IoT Hub (sensor telemetry)
+    - Technician Mobile App (images, notes, GPS)
+    - CRM (Dynamics 365)
+    - Customer Support (ServiceNow/Zendesk)
 
-### 1.2 Equipment Telemetry (silver_equipment)
-**Business Context:**
-The Equipment Telemetry model captures real-time and historical data from IoT-enabled equipment. This model is fundamental for predictive maintenance, equipment health monitoring, and operational efficiency.
+- **Ingestion**:
+    - **Batch**: Azure Data Factory ingests data from CRM, SQL, Ticketing
+    - **Stream**: Azure Event Hub handles IoT
+    - **File Streams**: Databricks Autoloader for mobile app data
 
-**Data Sources and Integration:**
-- IoT devices via Azure IoT Hub
-- Equipment maintenance systems
-- Work order history
-- Environmental monitoring systems
+- **Raw/Bronze Layer**:
+    - Data stored in Delta Lake as-is for auditability and recovery
 
-**Key Transformations:**
-1. **Time Series Processing**
-   - Resample data to consistent intervals
-   - Handle missing values
-   - Detect and flag anomalies
-   - Calculate rolling averages
+- **Cleansed/Silver Layer**:
+    - dbt handles SQL transformation, deduplication, schema standardization
+    - Organizes by business themes (telemetry, customers, work orders)
 
-2. **Feature Engineering**
-   - Derive equipment health scores
-   - Calculate performance metrics
-   - Generate trend indicators
-   - Create maintenance flags
+- **Business/Gold Layer**:
+    - Final models are curated for business use cases and AI model consumption
 
-3. **Data Quality**
-   - Validate sensor readings
-   - Check data completeness
-   - Verify equipment status
-   - Validate location data
+- **Unstructured data** like equipment images and service notes are processed separately and fed into downstream AI workflows (CV & LLM)
 
-**Business Relationships:**
-- Links to Work Orders (1:Many)
-- Links to Maintenance History (1:Many)
-- Links to Equipment Specifications (1:1)
-- Links to Environmental Data (1:1)
+### Medallion Architecture (Bronze → Silver → Gold)
 
-**Business Purpose:**
-- Enable predictive maintenance
-- Monitor equipment health in real-time
-- Optimize equipment utilization
-- Reduce unplanned downtime
-- Support warranty and service planning
+This pattern is at the heart of the platform:
 
-**Key Business Metrics:**
-- Equipment uptime
-- Mean time between failures
-- Energy efficiency metrics
-- Maintenance cost optimization
-- Equipment lifecycle analysis
+- **Bronze**: Raw data, minimally processed, good for traceability.
+- **Silver**: Cleaned, validated, enriched; source of truth for analytics.
+- **Gold**: Business-level data models, usually joined and aggregated, feeding dashboards and ML.
 
-### 1.3 Customer Profiles (silver_customer_profiles)
-**Business Context:**
-The Customer Profiles model serves as the single source of truth for customer information. It supports customer relationship management, service personalization, and business analytics.
+### Batch + Streaming Paths
 
-**Data Sources and Integration:**
-- CRM systems
-- Billing systems
-- Service history
-- Customer interaction data
+- **Batch**: Legacy systems or slowly-changing data are pulled in using Azure Data Factory (e.g., CRM, ticketing, SQL work orders)
+- **Streaming**: Real-time telemetry from IoT flows via Event Hub into Bronze layer; mobile app events stream into AutoLoader.
 
-**Key Transformations:**
-1. **Data Consolidation**
-   - Merge duplicate customer records
-   - Standardize contact information
-   - Normalize address formats
-   - Consolidate customer segments
+---
 
-2. **Data Enrichment**
-   - Calculate customer lifetime value
-   - Derive service adoption metrics
-   - Generate customer health scores
-   - Add demographic information
+## 2. Data Modeling Document
 
-3. **Data Quality**
-   - Validate contact information
-   - Check contract dates
-   - Verify service level agreements
-   - Validate payment terms
+### Key Data Models
 
-**Business Relationships:**
-- Links to Work Orders (1:Many)
-- Links to Service History (1:Many)
-- Links to Billing Records (1:Many)
-- Links to Customer Interactions (1:Many)
+**Silver Layer Models:**
+- `CleanedWorkOrders`
+- `CleanedTelemetryData`
+- `CleanedCustomerProfiles`
+- `CleanedMobileData`
 
-**Business Purpose:**
-- Enable personalized service delivery
-- Support customer segmentation
-- Track customer lifecycle
-- Manage service contracts
-- Drive customer retention strategies
+**Gold Layer Models:**
+- `Customer360`: Full view on customer interactions (CRM + Support + App)
+- `EquipmentMaintenanceFeatures`: Feature set for predictive ML
+- `TechnicianRoutingFeatures`: Used by routing optimization engine
+- `CustomerChurnFeatures`: For churn prediction model
 
-**Key Business Metrics:**
-- Customer lifetime value
-- Service adoption rates
-- Customer satisfaction scores
-- Contract renewal rates
-- Service utilization patterns
+### Entity Structure Examples
 
-## 2. Gold Layer Data Models
+#### a. `CleanedWorkOrders`
+```sql
+work_order_id STRING,
+customer_id STRING,
+status STRING,
+technician_id STRING,
+opened_ts TIMESTAMP,
+closed_ts TIMESTAMP,
+equipment_id STRING
+```
 
-### 2.1 Customer Churn Features (gold_churn_features)
-**Business Context:**
-The Customer Churn Features model is designed to predict and prevent customer attrition. It combines various customer interaction and service quality metrics to identify at-risk customers.
+#### b. `Customer360`
+```sql
+customer_id STRING,
+name STRING,
+email STRING,
+total_support_tickets INT,
+last_purchase_date DATE,
+last_service_date DATE,
+churn_score DOUBLE
+```
 
-**Source Data Integration:**
-- Customer Profiles
-- Service Quality Metrics
-- Billing and Payment Data
-- Customer Support Interactions
+#### c. `EquipmentMaintenanceFeatures`
+```sql
+equipment_id STRING,
+avg_temp_last_30days DOUBLE,
+pressure_variance DOUBLE,
+failure_count INT,
+last_maintenance_date DATE,
+label_failure BOOLEAN
+```
 
-**Key Transformations:**
-1. **Feature Engineering**
-   - Calculate service usage trends
-   - Derive complaint patterns
-   - Compute response time metrics
-   - Generate payment behavior scores
+### Partitioning & Optimization
 
-2. **Time Window Aggregations**
-   - 30-day rolling metrics
-   - Quarterly trend analysis
-   - Year-over-year comparisons
-   - Seasonal pattern detection
+- Time-based partitioning on ingestion timestamps
+- Z-Ordering on high-cardinality fields like `customer_id`, `equipment_id`
+- OPTIMIZE + VACUUM run on schedule (esp. on Silver/Gold tables)
+- Delta Lake for versioning, ACID, schema evolution
 
-3. **Predictive Features**
-   - Churn probability scores
-   - Risk level classification
-   - Early warning indicators
-   - Retention opportunity scores
+---
 
-**Business Relationships:**
-- Links to Customer Profiles (1:1)
-- Links to Service History (1:Many)
-- Links to Billing Records (1:Many)
-- Links to Support Interactions (1:Many)
+## 3. Data Governance Strategy
 
-**Business Purpose:**
-- Predict customer churn risk
-- Enable proactive retention strategies
-- Optimize customer service delivery
-- Support targeted marketing campaigns
-- Drive customer satisfaction improvements
+### Metadata & Lineage Tracking
 
-**Key Business Metrics:**
-- Churn probability scores
-- Customer health indicators
-- Service quality metrics
-- Revenue impact analysis
-- Retention success rates
+- **Azure Purview**: Automatically crawls and catalogs data from all sources
+- **Unity Catalog**: Manages metadata, access policies, and table lineage in Databricks
+- **Lineage** is mapped from raw to gold and linked to ML assets via MLflow
 
-### 2.2 Predictive Maintenance Features (gold_maintenance_features)
-**Business Context:**
-The Predictive Maintenance Features model enables proactive equipment maintenance by analyzing equipment telemetry and historical maintenance data.
+### Data Quality Enforcement
 
-**Source Data Integration:**
-- Equipment Telemetry
-- Maintenance History
-- Work Order Data
-- Equipment Specifications
+- **dbt tests** (e.g., `unique`, `not_null`, `relationships`)
+- **Great Expectations or Deequ** used optionally for deeper validations
+- Quality checks are tied into deployment pipelines
 
-**Key Transformations:**
-1. **Time Series Analysis**
-   - Trend detection
-   - Pattern recognition
-   - Anomaly detection
-   - Seasonality analysis
+### Sensitive Data Governance
 
-2. **Feature Engineering**
-   - Equipment health scores
-   - Failure probability calculations
-   - Maintenance urgency indicators
-   - Cost impact analysis
+- PII fields (email, phone, address) are masked or encrypted
+- RBAC (via Unity Catalog) restricts access to sensitive tables
+- Access logs audited periodically
+- Tags in Purview help identify and classify sensitive info
 
-3. **Predictive Features**
-   - Maintenance window predictions
-   - Failure risk scores
-   - Resource requirement estimates
-   - Cost optimization metrics
+### Monitoring & Alerting
 
-**Business Relationships:**
-- Links to Equipment (1:1)
-- Links to Maintenance History (1:Many)
-- Links to Work Orders (1:Many)
-- Links to Resource Planning (1:1)
+- Pipelines monitored via ADF triggers, Event Hub metrics
+- Data freshness tracked via dashboards
+- Alerts triggered on test failures or pipeline crashes (integrated with Azure Monitor / Log Analytics)
 
-**Business Purpose:**
-- Predict equipment failures
-- Optimize maintenance schedules
-- Reduce unplanned downtime
-- Extend equipment lifespan
-- Optimize maintenance costs
+---
 
-**Key Business Metrics:**
-- Equipment reliability scores
-- Maintenance cost savings
-- Downtime reduction
-- Mean time to repair
-- Preventive maintenance effectiveness
+## 4. ML / AI Data Serving Strategy
 
-### 2.3 Technician Routing Features (gold_technician_routing)
-**Business Context:**
-The Technician Routing Features model optimizes field service operations by considering multiple factors for efficient technician dispatch and routing.
+### Feature Preparation
 
-**Source Data Integration:**
-- Work Order Data
-- Technician Availability
-- Equipment Locations
-- Traffic and Weather Data
+- Silver tables are the primary source
+- Features are joined and transformed in Gold layer
+- Stored in **Databricks Feature Store** for consistency and reuse
 
-**Key Transformations:**
-1. **Route Optimization**
-   - Travel time calculations
-   - Route efficiency scoring
-   - Time window optimization
-   - Resource balancing
+### ML Models & Pipelines
 
-2. **Feature Engineering**
-   - Skill matching scores
-   - Priority weighting
-   - Location clustering
-   - Time slot optimization
+- **Predictive Maintenance Model**: Uses telemetry + service history
+- **Customer Churn Prediction**: Based on CRM + Ticketing + App activity
+- **Technician Routing Optimizer**: Combines GPS + WO + calendar data
+- **CV Model**: Trained on equipment images using Azure ML
+- **LLM Assistant**: Text embeddings from notes + CRM + support tickets
 
-3. **Dynamic Features**
-   - Real-time traffic updates
-   - Weather impact analysis
-   - Emergency response scoring
-   - Resource utilization metrics
+### Unstructured + Structured Handling
 
-**Business Relationships:**
-- Links to Work Orders (1:Many)
-- Links to Technicians (1:Many)
-- Links to Equipment (1:Many)
-- Links to Customer Locations (1:Many)
+- **Unstructured**:
+    - Equipment images ingested into Blob Storage, then used by CV models
+    - Service notes turned into embeddings and fed into the LLM
+- **Structured**:
+    - Stored in Delta Tables (Gold)
+    - Served to ML models through Feature Store and directly from Delta
 
-**Business Purpose:**
-- Optimize technician routes
-- Reduce travel time
-- Improve first-time fix rates
-- Balance workload distribution
-- Enhance customer service experience
+---
 
-**Key Business Metrics:**
-- Route efficiency scores
-- Travel time reduction
-- Service window compliance
-- Technician utilization
-- Customer wait time reduction
+## Summary
 
-## 3. Data Flow and Integration
+This architecture meets SmartField Inc.'s vision for a smart, scalable, ML-first data platform. It combines modern lakehouse patterns with strong governance and flexible AI/ML integrations – while still being cost-aware and modular enough to evolve over time.
 
-### 3.1 Silver to Gold Layer Transformations
-- **Data Aggregation**
-  - Time-based aggregations
-  - Customer-centric views
-  - Equipment-focused metrics
-  - Service quality indicators
 
-- **Feature Engineering**
-  - Predictive features
-  - Business metrics
-  - Performance indicators
-  - Risk scores
-
-- **Data Quality**
-  - Cross-layer validation
-  - Consistency checks
-  - Completeness verification
-  - Accuracy validation
-
-### 3.2 Model Relationships and Dependencies
-- **Cross-Model Dependencies**
-  - Customer-centric relationships
-  - Equipment-focused relationships
-  - Service-oriented relationships
-  - Resource-based relationships
-
-- **Data Flow Patterns**
-  - Batch processing flows
-  - Real-time updates
-  - Event-driven triggers
-  - Scheduled refreshes
-
-### 3.3 Business Impact and Value
-- **Operational Efficiency**
-  - Resource optimization
-  - Cost reduction
-  - Service improvement
-  - Quality enhancement
-
-- **Strategic Value**
-  - Customer retention
-  - Equipment reliability
-  - Service excellence
-  - Business growth
-
-## 4. Optimization Strategies
-
-### 4.1 Data Lake Optimization
-- Implement Delta Lake for ACID transactions
-- Use Z-ordering for multi-dimensional queries
-- Implement data skipping and statistics
-- Enable auto-compaction and auto-optimize
-
-### 4.2 Query Performance
-- Materialized views for common aggregations
-- Query result caching
-- Partition pruning optimization
-- Statistics collection for query planning
-
-### 4.3 Storage Optimization
-- Data compression (ZSTD)
-- Small file compaction
-- Cold data archival strategy
-- Data lifecycle management 
